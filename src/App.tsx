@@ -55,7 +55,7 @@ export default function App() {
         <HeroSection />
 
         {!result && !isLoading && (
-          <LeadForm onSubmit={handleFormSubmit} isLoading={isLoading} />
+          <LeadForm onSubmit={handleFormSubmit} />
         )}
 
         {isLoading && <LoadingState />}
