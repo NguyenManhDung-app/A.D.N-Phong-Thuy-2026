@@ -12,6 +12,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Thiếu dữ liệu đầu vào" });
     }
 
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Thiếu GEMINI_API_KEY trên Vercel" });
+    }
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
     const model = genAI.getGenerativeModel({
@@ -95,13 +99,28 @@ Cấu trúc JSON phải đúng như sau:
       .replace(/```/g, "")
       .trim();
 
-    const parsed = JSON.parse(cleaned);
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      console.error("Gemini raw response:", text);
+
+      return res.status(500).json({
+        error: "Gemini không trả về JSON hợp lệ",
+        raw: text,
+      });
+    }
 
     return res.status(200).json(parsed);
   } catch (error) {
-    console.error("Gemini error:", error);
+    console.error("Gemini full error:", error);
+    console.error("Gemini error message:", error?.message);
+    console.error("Gemini error stack:", error?.stack);
+
     return res.status(500).json({
       error: "Không thể phân tích phong thủy bằng AI",
+      details: error?.message || String(error),
     });
   }
 }
