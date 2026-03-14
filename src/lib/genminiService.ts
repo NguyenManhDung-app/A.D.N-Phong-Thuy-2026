@@ -1,107 +1,40 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { FormData, FengShuiResult } from './fengShuiLogic';
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function generateFengShuiWithAI(
+  data: FormData
+): Promise<FengShuiResult> {
+  const response = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fullName: data.fullName,
+      day: data.day,
+      month: data.month,
+      year: data.year,
+      gender: data.gender,
+      currentDirection: data.currentDirection,
+    }),
+  });
+
+  let result: any;
 
   try {
-    const { fullName, day, month, year, gender, currentDirection } = req.body;
-
-    if (!year || !gender || !currentDirection) {
-      return res.status(400).json({ error: "Thiếu dữ liệu đầu vào" });
-    }
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-    });
-
-    const prompt = `
-Bạn là chuyên gia phong thủy và kiến trúc nội thất.
-
-Hãy phân tích phong thủy cho khách hàng với dữ liệu sau:
-- Họ tên: ${fullName || ""}
-- Ngày sinh: ${day || ""}/${month || ""}/${year}
-- Giới tính: ${gender}
-- Hướng nhà hiện tại: ${currentDirection}
-
-Trả về DUY NHẤT JSON hợp lệ, không thêm markdown, không thêm giải thích ngoài JSON.
-
-Cấu trúc JSON phải đúng như sau:
-{
-  "tongQuanBanMenh": {
-    "namSinh": "string",
-    "gioiTinh": "string",
-    "nhomMenh": "string",
-    "nhomHuongPhuHop": ["string"],
-    "moTa": "string"
-  },
-  "danhGiaHuongNhaHienTai": {
-    "huongNha": "string",
-    "mucDo": "string",
-    "moTa": "string",
-    "goiYDieuChinh": "string"
-  },
-  "huongBep": {
-    "huongDeXuat": ["string"],
-    "mucDo": "string",
-    "moTa": "string",
-    "luuY": "string"
-  },
-  "huongBanTho": {
-    "huongDeXuat": ["string"],
-    "mucDo": "string",
-    "moTa": "string",
-    "luuY": "string"
-  },
-  "huongCuaChinh": {
-    "huongDeXuat": ["string"],
-    "mucDo": "string",
-    "moTa": "string",
-    "luuY": "string"
-  },
-  "huongNhaVeSinh": {
-    "huongNenDat": ["string"],
-    "huongNenTranh": ["string"],
-    "mucDo": "string",
-    "moTa": "string",
-    "luuY": "string"
-  },
-  "mauSacChuDao": [
-    {
-      "tenMau": "string",
-      "hex": "string",
-      "yNghia": "string",
-      "ungDung": "string"
-    }
-  ],
-  "dinhHuongKhongGianSong": {
-    "moTaTongQuan": "string",
-    "goiYBoTri": ["string"]
-  },
-  "diemTongQuan": 0,
-  "xepLoaiTongQuan": "string",
-  "loiKhuyenChuyenGia": "string"
-}
-`;
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-
-    const cleaned = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-
-    const parsed = JSON.parse(cleaned);
-
-    return res.status(200).json(parsed);
-  } catch (error) {
-    console.error("Gemini error:", error);
-    return res.status(500).json({
-      error: "Không thể phân tích phong thủy bằng AI",
-    });
+    result = await response.json();
+  } catch {
+    throw new Error('Phản hồi từ máy chủ không hợp lệ');
   }
+
+  if (!response.ok) {
+    const message =
+      result?.error?.message ||
+      result?.message ||
+      result?.error ||
+      'AI request failed';
+
+    throw new Error(message);
+  }
+
+  return result as FengShuiResult;
 }
